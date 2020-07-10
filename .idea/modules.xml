@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/.idea/kings-framework.iml" filepath="$PROJECT_DIR$/.idea/kings-framework.iml" />
+      <module fileurl="file://$PROJECT_DIR$/kings-framework-common/kings-framework-common.iml" filepath="$PROJECT_DIR$/kings-framework-common/kings-framework-common.iml" />
+      <module fileurl="file://$PROJECT_DIR$/kings-framework-components-distributed-zookeeper/kings-framework-components-distributed-zookeeper.iml" filepath="$PROJECT_DIR$/kings-framework-components-distributed-zookeeper/kings-framework-components-distributed-zookeeper.iml" />
+      <module fileurl="file://$PROJECT_DIR$/kings-framework-dependency/kings-framework-dependency.iml" filepath="$PROJECT_DIR$/kings-framework-dependency/kings-framework-dependency.iml" />
+      <module fileurl="file://$PROJECT_DIR$/kings-framework-parent-distributed/kings-framework-parent-distributed.iml" filepath="$PROJECT_DIR$/kings-framework-parent-distributed/kings-framework-parent-distributed.iml" />
+    </modules>
+  </component>
+</project>

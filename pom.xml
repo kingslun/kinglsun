@@ -16,6 +16,7 @@
     <description>luns framework by Spring Boot</description>
 
     <modules>
+        <module>kings-spring-boot</module>
         <module>kings-framework-common</module>
         <module>kings-framework-dependency</module>
         <!--分布式标准和实现-->

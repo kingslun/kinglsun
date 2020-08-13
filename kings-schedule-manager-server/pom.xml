@@ -8,17 +8,18 @@
         <artifactId>kings-framework</artifactId>
         <relativePath>../pom.xml</relativePath>
     </parent>
-    <artifactId>kings-spring-boot</artifactId>
-    <description>luns framework dependency by Spring Boot</description>
+    <artifactId>kings-schedule-manager-server</artifactId>
+    <description>schedule server</description>
     <dependencies>
         <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-jetty</artifactId>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-all</artifactId>
+            <version>5.0.0.Alpha2</version>
         </dependency>
-        <!-- https://mvnrepository.com/artifact/org.springframework.boot/spring-boot-starter-thymeleaf -->
         <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-thymeleaf</artifactId>
+            <groupId>com.kings</groupId>
+            <artifactId>kings-schedule-common</artifactId>
+            <version>1.0.0-SNAPSHOT</version>
         </dependency>
     </dependencies>
 </project>

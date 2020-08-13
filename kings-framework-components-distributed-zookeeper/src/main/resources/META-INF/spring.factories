@@ -1,2 +1,0 @@
-org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
-   com.zatech.octopus.component.distributed.zookeeper.config.OctopusZookeeperAutoConfiguration

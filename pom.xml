@@ -16,12 +16,17 @@
     <description>luns framework by Spring Boot</description>
 
     <modules>
+        <!--spring boot demo-->
         <module>kings-spring-boot</module>
         <module>kings-framework-common</module>
         <module>kings-framework-dependency</module>
         <!--分布式标准和实现-->
-        <module>kings-framework-parent-distributed</module>
-        <module>kings-framework-components-distributed-zookeeper</module>
+        <!--        <module>kings-framework-parent-distributed</module>-->
+        <!--        <module>kings-framework-components-distributed-zookeeper</module>-->
+        <!--scheduler-->
+        <module>kings-schedule-manager-server</module>
+        <module>kings-schedule-client-executor</module>
+        <module>kings-schedule-common</module>
     </modules>
     <properties>
         <java.version>1.8</java.version>

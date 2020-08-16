@@ -16,6 +16,7 @@
     <description>luns framework by Spring Boot</description>
 
     <modules>
+        <module>kings-docker</module>
     </modules>
     <properties>
         <java.version>1.8</java.version>

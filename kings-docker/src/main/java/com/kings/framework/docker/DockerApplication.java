@@ -1,9 +1,17 @@
 package com.kings.framework.docker;
 
+import com.zatech.gaia.amethyst.client.api.JobContext;
+import com.zatech.gaia.amethyst.client.api.JobHandler;
+import com.zatech.gaia.amethyst.client.api.annotation.Job;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.ToString;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Mono;
@@ -31,10 +39,44 @@ public class DockerApplication implements DisposableBean {
         return Mono.just("hello webflux");
     }
 
+    @GetMapping("index")
+    public Mono<Person> index() {
+        Person lun = new Person("王伦", 26, "15021261772", "kingslun@163.com", "上海市普陀区曹杨新村", null);
+        Person you = new Person("吴优", 3, "15971505417", "wuyou@xinlang.com", "上海市普陀区曹杨二村", lun);
+        return Mono.just(you);
+    }
+
+    @Getter
+    @Setter
+    @ToString
+    @AllArgsConstructor
+    static class Person {
+        private String name;
+        private int age;
+        private String phone;
+        private String email;
+        private String address;
+        private Person husband;
+    }
+
     @Override
     public void destroy() throws Exception {
         if (log.isDebugEnabled()) {
             log.debug("Application is closing...");
+        }
+    }
+
+    @Configuration
+    @Job(name = "kingsTask")
+    static class Task implements JobHandler {
+        /**
+         * 任务执行接口
+         *
+         * @param context 执行上下文
+         */
+        @Override
+        public void execute(JobContext context) {
+            System.out.println("========>>>job execute with context:" + context);
         }
     }
 }

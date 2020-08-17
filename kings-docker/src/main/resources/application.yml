@@ -1,2 +1,11 @@
 logging:
   level.com.kings.framework.docker: debug
+spring:
+  application:
+    name: kings-docker
+octopus:
+  amethyst:
+    client:
+      task:
+        enable: true
+        servers: localhost:6000

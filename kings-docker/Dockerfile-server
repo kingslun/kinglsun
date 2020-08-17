@@ -1,0 +1,5 @@
+FROM java:8
+COPY ./target/zatech-gaia-amethyst-server.jar /root/startup/
+WORKDIR /root/startup/
+EXPOSE 8080
+ENTRYPOINT exec java ${JVM_OPTS:- -Xdebug -Xms1024m -Xmx1024m} -Dspring.active.profile=local -jar /root/startup/zatech-gaia-amethyst-server.jar

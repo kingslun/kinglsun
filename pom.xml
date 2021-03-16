@@ -5,23 +5,42 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>2.3.3.RELEASE</version>
-        <relativePath/> <!-- lookup parent from repository -->
+        <version>2.4.2</version>
     </parent>
     <groupId>com.kings</groupId>
     <artifactId>kings-framework</artifactId>
     <version>1.0.0-SNAPSHOT</version>
     <packaging>pom</packaging>
     <name>kings-framework</name>
-    <description>luns framework by Spring Boot</description>
+    <description>lun framework by Spring Boot</description>
 
     <modules>
         <module>kings-docker</module>
+        <module>kings-framework-zookeeper</module>
+        <module>kings-spring-security</module>
+        <module>kings-base</module>
     </modules>
     <properties>
         <java.version>1.8</java.version>
     </properties>
-
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.springframework.cloud</groupId>
+                <artifactId>spring-cloud-dependencies</artifactId>
+                <version>Hoxton.SR8</version>
+                <scope>import</scope>
+                <type>pom</type>
+            </dependency>
+            <dependency>
+                <groupId>org.springframework.cloud</groupId>
+                <artifactId>spring-cloud-security-dependencies</artifactId>
+                <version>2.2.4.RELEASE</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
     <!--default dependency management-->
     <dependencies>
         <dependency>
@@ -33,8 +52,6 @@
             <artifactId>lombok</artifactId>
         </dependency>
     </dependencies>
-    <dependencyManagement>
-    </dependencyManagement>
     <build>
         <plugins>
             <plugin>

@@ -1,5 +1,5 @@
 FROM java:8
-COPY ./target/kings-docker.jar /root/startup/
+COPY ./target/kings-docker.jar /root/startup/app.jar
 WORKDIR /root/startup/
 EXPOSE 8080
-ENTRYPOINT exec java ${JVM_OPTS:- -Xdebug -Xms1024m -Xmx1024m} -jar /root/startup/kings-docker.jar
+ENTRYPOINT exec java ${JVM_OPTS:- -Xdebug -Xms124m -Xmx124m} -jar /root/startup/app.jar

@@ -1,8 +1,5 @@
 package com.kings.framework.docker;
 
-import com.zatech.gaia.amethyst.client.api.JobContext;
-import com.zatech.gaia.amethyst.client.api.JobHandler;
-import com.zatech.gaia.amethyst.client.api.annotation.Job;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
@@ -11,7 +8,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Mono;
@@ -66,17 +62,4 @@ public class DockerApplication implements DisposableBean {
         }
     }
 
-    @Configuration
-    @Job(name = "kingsTask")
-    static class Task implements JobHandler {
-        /**
-         * 任务执行接口
-         *
-         * @param context 执行上下文
-         */
-        @Override
-        public void execute(JobContext context) {
-            System.out.println("========>>>job execute with context:" + context);
-        }
-    }
 }

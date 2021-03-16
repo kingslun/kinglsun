@@ -8,4 +8,4 @@ octopus:
     client:
       task:
         enable: true
-        servers: localhost:6000
+        servers: 192.168.243.125:6000

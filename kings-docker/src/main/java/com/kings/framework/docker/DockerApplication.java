@@ -56,7 +56,7 @@ public class DockerApplication implements DisposableBean {
     }
 
     @Override
-    public void destroy() throws Exception {
+    public void destroy() {
         if (log.isDebugEnabled()) {
             log.debug("Application is closing...");
         }

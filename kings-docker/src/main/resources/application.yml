@@ -3,9 +3,8 @@ logging:
 spring:
   application:
     name: kings-docker
-octopus:
-  amethyst:
-    client:
-      task:
-        enable: true
-        servers: 192.168.243.125:6000
+management:
+  endpoints:
+    web:
+      exposure:
+        include: prometheus

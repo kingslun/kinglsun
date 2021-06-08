@@ -7,7 +7,6 @@ import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.test.context.ActiveProfiles;
 
 import javax.annotation.Resource;
 import java.util.Random;
@@ -24,7 +23,6 @@ import java.util.Random;
  */
 @SpringBootApplication
 @EnableScheduling
-@ActiveProfiles("kafka")
 public class KafkaApplication {
     public static void main(String[] args) {
         SpringApplication.run(KafkaApplication.class);

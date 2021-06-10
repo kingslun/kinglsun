@@ -3,7 +3,7 @@ pipeline {
     stages {
         stage('拉代码') {
             steps {
-                checkout([$class: 'GitSCM', branches: [[name: ' */${branch}']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: '', url: 'https://github.com/kingslun/kinglsun.git']]])
+                checkout([$class: 'GitSCM', branches: [[name: ' */${branch}']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github', url: 'https://github.com/kingslun/kinglsun.git']]])
             }
         }
         stage('打包代码') {

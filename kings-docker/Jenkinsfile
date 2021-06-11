@@ -1,9 +1,25 @@
 pipeline {
     agent any
+    environment {
+        JENKINS_WORKSPACE = "~/.jenkins/workspace"    //jenkins存放文件的地址
+        PROJECT_NAME = "${JOB_NAME}"                    // 项目名
+        JAR_NAME = "app.jar"   // 项目生成的jar的名字
+        IMAGE_NAME = "app"                    // 镜像名一般和项目名相同
+        VERSION_ID = "${BUILD_ID}"
+    }
     stages {
+        stage('初始化') {
+            steps {
+                script {
+                    def dockerPath = tool 'docker' //全局配置里的docker
+                    env.PATH = "${dockerPath}/bin:${env.PATH}" //添加了系统环境变量上
+                }
+            }
+        }
         stage('拉代码') {
             steps {
-                checkout([$class: 'GitSCM', branches: [[name: ' */${branch}']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github', url: 'https://github.com/kingslun/kinglsun.git']]])
+                echo '======================开始拉拉${branch}分支的取代码======================'
+                checkout([$class: 'GitSCM', branches: [[name: ' */${branch}']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'ahs', url: 'http://code.aihuishou.com/lun.wang/kings-framework.git']]])
             }
         }
         stage('打包代码') {
@@ -17,17 +33,35 @@ pipeline {
                 echo '======================开始执行单侧======================'
                 sh 'mvn test'
             }
-            post {
-                always {
-                    junit 'target/surefire-reports/*.xml'
-                }
-            }
         }
-        stage('发布代码') {
+        stage('部署代码') {
             steps {
-                echo '======================开始发布应用======================'
-                sh 'cd ./target'
-                sh 'java -jar kings-docker.jar'
+                echo '======================开始部署应用======================'
+                sh '''
+                    echo '=========>>>删除旧版镜像<<<========='
+                    old_images=`docker images|grep ${IMAGE_NAME}|awk '{print $3}'`
+                    for image in $old_images 
+                    do
+                        if [[ -n "${image}" ]]; then
+                            docker rmi ${image}
+                            echo `=========>>>成功删除旧镜像${image}`
+                        fi
+                    done
+                    echo '=========>>>停止并删除容器<<<========='
+                    old_containers=`docker ps|grep ${IMAGE_NAME}|awk '{print $1}'`
+                    for container in $old_containers 
+                    do
+                        if [[ -n "${container}" ]]; then
+                            echo '=========>>>停止容器<<<========='
+                            docker stop ${container}
+                            docker rm ${container}
+                            echo `=========>>>成功删除旧容器${container}`
+                        fi
+                    done
+                    echo '=========>>>构建新容器<<<========='
+                    docker build -f Dockerfile --build-arg jar_name=${JAR_NAME} -t ${IMAGE_NAME}:${VERSION_ID} .
+                    docker run -itd --name ${IMAGE_NAME} --net congnet -p 8090:10000 ${IMAGE_NAME}:${VERSION_ID}
+                '''
             }
         }
     }

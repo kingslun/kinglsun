@@ -1,40 +1,118 @@
 package com.kings.framework.k8s;
 
-import com.kings.framework.K8sPodListener;
 import io.fabric8.kubernetes.api.model.*;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClientException;
+import io.fabric8.kubernetes.client.Watch;
 import io.fabric8.kubernetes.client.Watcher;
-import org.jetbrains.annotations.NotNull;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.util.Assert;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.Queue;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiPredicate;
 import java.util.function.Predicate;
 
-import static com.kings.framework.K8sPodListener.FALSE;
-import static com.kings.framework.K8sPodListener.PodStatus.*;
+import static com.kings.framework.k8s.K8sPodListener.FALSE;
+import static com.kings.framework.k8s.K8sPodListener.PodStatus.*;
 
-/**
- * 基于Fabric8框架实现的对k8s集群下指定namespace节点下所有pod实例状态监控管理的注册中心
- * 能基于pod生命周期内各个阶段进行快速响应
- * feature:对pod宕机进行检测 发送钉钉通知
- * See <a href="http://code.aihuishou.com/fusion/ahs-nova/-/issues/4">shutdown listing</a> for a details of the feature
- *
- * @see K8sPodListener 通过对pod各阶段的状态变更抽离的监听接口 是对各阶段响应后的业务逻辑进行抽离和封装
- */
-public class Fabric8K8sPodWatchRegistry {
+public abstract class AbstractFabric8PodsWatcher implements Fabric8PodsWatcher {
+    /**
+     * 重试连接k8s的开关
+     */
+    private volatile boolean retryable = true;
+    /**
+     * 是否开启状态 true is already open
+     */
+    private volatile boolean openly = false;
     /**
      * 具体操作k8s集群的客户端连接工具 by Fabric8框架
      */
-    private final KubernetesClient client;
+    protected final KubernetesClient client;
+    /**
+     * 工作线程池
+     */
+    protected final ExecutorService executors;
+    /**
+     * 默认的工作线程池
+     */
+    private static final ExecutorService DEFAULT;
+    private static final AtomicInteger THREADS;
+    /**
+     * 监听器
+     */
+    protected final K8sPodListener listener;
 
-    public Fabric8K8sPodWatchRegistry(KubernetesClient client) {
+    static {
+        THREADS = new AtomicInteger(1);
+        //获取1/4的CPU执行-可根据实际工作量来进行动态调整
+        DEFAULT = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors() / 4,
+                r -> new Thread(r, "K8sPodStatusWatcher" + THREADS.getAndIncrement()));
+    }
+
+    protected AbstractFabric8PodsWatcher(KubernetesClient client, K8sPodListener listener) {
+        this(client, listener, DEFAULT);
+    }
+
+    protected AbstractFabric8PodsWatcher(KubernetesClient client, K8sPodListener listener, ExecutorService service) {
         Assert.notNull(client, "Add pods listener without KubernetesClient");
+        Assert.notNull(listener, "Listen on pods without an owner");
+        Assert.notNull(service, "Please configure an executors threads pool");
         this.client = client;
+        this.listener = listener;
+        this.executors = service;
+    }
+
+    @Override
+    public final boolean retryable() {
+        return this.retryable;
+    }
+
+    /**
+     * 最多创建5个监听
+     */
+    protected final Queue<Watch> watches = new ArrayBlockingQueue<>(5);
+
+    @Override
+    public void close() {
+        if (this.openly()) {
+            this.turnoff();
+            Watch watch;
+            while ((watch = watches.poll()) != null) {
+                watch.close();
+            }
+        } else {
+            throw new K8sPodListener.Exception("Already closed...");
+        }
+    }
+
+    /**
+     * 跟随IOC容器生命周期终止而关闭
+     */
+    @Override
+    public final void destroy() {
+        this.turnoff();
+        this.client.close();
+    }
+
+    @Override
+    public boolean openly() {
+        return this.openly;
+    }
+
+    protected void opened() {
+        this.openly = true;
+    }
+
+    @Override
+    public void turnoff() {
+        this.retryable = false;
+        this.openly = false;
     }
 
     /**
@@ -93,6 +171,7 @@ public class Fabric8K8sPodWatchRegistry {
      * deletionGracePeriodSeconds：为具体优雅停机最大等待时间（猜测）这个值在会在最后一次置空 因此不能拿来衡量
      */
     private static final Predicate<String> TERMINATING_ = StringUtils::hasText;
+
     /**
      * 区分是watcher初始化还是真正的pod新建
      * 真正的新建条件
@@ -111,36 +190,30 @@ public class Fabric8K8sPodWatchRegistry {
                     !CollectionUtils.isEmpty(status.getContainerStatuses());
 
     /**
-     * 对指定namespace下的pods进行监听
-     *
-     * @param listener 监听者
-     * @param ns       namespace
-     * @author lun.wang
-     * @date 2021/06/21 18:11
-     * @see K8sPodListener
-     * @since v1.1
-     */
-    public void addPodListener(@NotNull String ns, @NotNull K8sPodListener listener) {
-        Assert.hasText(ns, "Add pods listener without namespace");
-        Assert.notNull(listener, "Add pods listener without listener");
-        Watcher<Pod> watcher = new PodWatcher(listener);
-        try {
-            this.client.pods().inNamespace(ns).watch(watcher);
-        } catch (java.lang.Exception e) {
-            listener.onException(new K8sPodListener.Exception(e));
-        }
-    }
-
-    /**
      * K8s pod监听器 负责衔接fabric8框架和K8sPodListener的桥梁
      *
-     * @see K8sPodListener,Watcher,Pod
+     * @see K8sPodListener, Watcher , Pod
      */
-    private static class PodWatcher implements Watcher<Pod> {
+    @Slf4j
+    static class PodWatcher implements Watcher<Pod> {
         private final K8sPodListener listener;
+        private final ExecutorService executorService;
+        /**
+         * <a href="http://jira.aihuishou.com/browse/ZEUS-43">处理监听通道关闭的异常场景</a>
+         */
+        private final Callable<Boolean> retryHook;
+        private final Retryable retryable;
 
-        PodWatcher(K8sPodListener listener) {
+        protected PodWatcher(K8sPodListener listener, ExecutorService executorService, Callable<Boolean> retryHook,
+                             Retryable retryable) {
             this.listener = listener;
+            this.executorService = executorService;
+            this.retryHook = retryHook;
+            this.retryable = retryable;
+        }
+
+        private void submit(K8sPodListener.Pod pod) {
+            this.executorService.submit(new PodStatusEventWorker(this.listener, pod));
         }
 
         private K8sPodListener.Pod convert(Pod pod) {
@@ -175,51 +248,68 @@ public class Fabric8K8sPodWatchRegistry {
                      * 1.phase一定是Pending状态的一定是还在初始化阶段
                      */
                     if (Objects.equals(K8sPodListener.PENDING, bak.getPhase())) {
-                        listener.apply(bak, PENDING);
+                        this.submit(bak.withStatus(PENDING));
                         break;
                     }
                     //2.Running状态的会有很多场景 Pending完成及shutdown/Terminating阶段都是Running
                     if (!Objects.equals(K8sPodListener.RUNNING, bak.getPhase())) {
-                        listener.apply(bak, UNKNOWN);
+                        this.submit(bak.withStatus(UNKNOWN));
                         break;
                     }
                     final List<PodCondition> conditions = status.getConditions();
                     final List<ContainerStatus> containerStatuses = status.getContainerStatuses();
                     if (CollectionUtils.isEmpty(conditions) || CollectionUtils.isEmpty(containerStatuses)) {
                         //正常非pending状态不会至此
-                        listener.apply(bak, UNKNOWN);
+                        this.submit(bak.withStatus(UNKNOWN));
                         break;
                     }
                     if (SHUTDOWN_.test(status)) {
                         //吧shutdown摘出来
-                        listener.apply(bak, SHUTDOWN);
+                        this.submit(bak.withStatus(SHUTDOWN));
                     } else if (TERMINATING_.test(pod.getMetadata().getDeletionTimestamp())) {
                         //吧Terminating摘出来
-                        listener.apply(bak, TERMINATING);
+                        this.submit(bak.withStatus(TERMINATING));
                     } else {
-                        listener.apply(bak, RUNNING);
+                        this.submit(bak.withStatus(RUNNING));
                     }
                     break;
                 case DELETED: //在删除deployment时触发 流程是先优雅停机所有节点,期间会触发多次MODIFIED 最终成功之后才会触发此入口
-                    listener.apply(bak, DELETE);
+                    this.submit(bak.withStatus(DELETE));
                     break;
                 case ADDED:
                     if (ADD_RUNNING.test(bak, status)) {
-                        listener.apply(bak, RUNNING);
+                        this.submit(bak.withStatus(RUNNING));
                     } else {
-                        listener.apply(bak, CREAT);
+                        this.submit(bak.withStatus(CREAT));
                     }
                     break;
                 case ERROR:
                     //目前未遇到过的状态 可能是pod异常时触发
-                    listener.apply(bak, UNKNOWN);
+                    this.submit(bak.withStatus(UNKNOWN));
                     break;
             }
         }
 
         @Override
         public void onClose(KubernetesClientException e) {
-            listener.onException(new K8sPodListener.Exception(e));
+            listener.onClose(new K8sPodListener.Exception(e));
+            log.debug("Checked channel closed of the kubernetes container pods listener!");
+            //对关闭的通道尝试重新建立
+            for (int i = 1; retryable.retryable(); i++) {
+                try {
+                    log.debug("Checked channel closed of the kubernetes container pods listener, now retry...");
+                    Future<Boolean> result = this.executorService.submit(retryHook);
+                    if (Boolean.TRUE.equals(result.get())) {
+                        log.debug("Retry to add the pods listener success to the kubernetes container!");
+                        break;
+                    }
+                    //try again in {i} seconds
+                    TimeUnit.SECONDS.sleep(i);
+                } catch (InterruptedException | ExecutionException ignore) {
+                    //ignore exception
+                    Thread.currentThread().interrupt();
+                }
+            }
         }
     }
 }

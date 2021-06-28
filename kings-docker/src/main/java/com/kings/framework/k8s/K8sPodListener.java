@@ -1,22 +1,26 @@
-package com.kings.framework;
+package com.kings.framework.k8s;
 
 import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
-import org.springframework.lang.NonNull;
-import org.springframework.util.Assert;
 
 /**
  * <p>
  * k8s容器pod实例监听器 监听实例扩容、缩容、更新事件
- * exp: 对指定namespace下的pods进行监听
+ * exp: 对单环境下指定namespace下的pods进行监听
+ * env===>ns===>pod
  * </p>
  *
  * @author lun.wang
  * @date 2021/6/21 5:38 下午
  * @since 1.0
  */
-public interface K8sPodListener {
+public interface K8sPodListener extends NamingAware {
+    /**
+     * 环境信息提供者
+     */
+    String env();
+
     /**
      * K8s虚拟机节点实例信息描述对象
      * pod描述信息
@@ -25,6 +29,10 @@ public interface K8sPodListener {
     @Setter
     @ToString
     class Pod {
+        /**
+         * *** 所属环境 *** not empty
+         */
+        private String env;
         /**
          * 实例名称
          */
@@ -60,8 +68,19 @@ public interface K8sPodListener {
         /**
          * 实例状态
          */
-        @NonNull
         private PodStatus status;
+
+        /**
+         * 重写setStatus方法 返回自身
+         *
+         * @param status pod状态
+         * @return self
+         */
+        public Pod withStatus(PodStatus status) {
+            this.status = status;
+            return this;
+        }
+
         /**
          * 实例重启次数
          */
@@ -113,36 +132,6 @@ public interface K8sPodListener {
 
         public Exception(Throwable cause) {
             super(cause);
-        }
-    }
-
-    default void apply(@NonNull Pod pod, @NonNull PodStatus status) {
-        Assert.notNull(pod, "Apply kubernetes listener arguments pod is null");
-        Assert.notNull(status, "Apply kubernetes listener arguments status is null");
-        pod.setStatus(status);
-        switch (status) {
-            case CREAT:
-                this.onPodCreating(pod);
-                break;
-            case DELETE:
-                this.onPodDelete(pod);
-                break;
-            //TERMINATING PENDING状态共享
-            case TERMINATING:
-            case PENDING:
-                this.onPodPending(pod);
-                break;
-            case RUNNING:
-                this.onPodRunning(pod);
-                break;
-            case UNKNOWN:
-                this.onPodUnKnown(pod);
-                break;
-            case SHUTDOWN:
-                this.onPodShutdown(pod);
-                break;
-            default:
-                throw new Exception("Illegal status exception @PodStatus");
         }
     }
 
@@ -208,6 +197,15 @@ public interface K8sPodListener {
      * @param e error
      */
     default void onException(Exception e) {
+
+    }
+
+    /**
+     * 监听通道关闭时触发
+     *
+     * @param e error
+     */
+    default void onClose(Exception e) {
 
     }
 

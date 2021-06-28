@@ -10,9 +10,13 @@ spec:
   ports:
     - port: 8080
       targetPort: 8080
-      nodePort: 30001
+      nodePort: 30008
       protocol: TCP
-      name: http
+      name: web
+    - port: 6379
+      targetPort: 6379
+      protocol: TCP
+      name: redis
   selector:
     app: kings-app
   type: NodePort
@@ -24,7 +28,7 @@ metadata:
   name: kings-app
   namespace: kings
 spec:
-  replicas: 1
+  replicas: 3
   selector:
     matchLabels:
       app: kings-app #名称
@@ -45,36 +49,4 @@ spec:
                 command: [ "/bin/sh", "-c", "sleep 5" ]
           ports:
             - containerPort: 8080
-            - containerPort: 30008
-#          resources:
-#            limits:
-#              cpu: 256m
-#              memory: 512m
-#            requests:
-#              cpu: 128m
-#              memory: 512m
-#          readinessProbe:
-#            httpGet:
-#              path: /health
-#              port: 8080
-#            initialDelaySeconds: 30
-#            periodSeconds: 10
-#            timeoutSeconds: 5
-#            successThreshold: 1
-#            failureThreshold: 3
-#          livenessProbe:
-#            httpGet:
-#              path: /health
-#              port: 8080
-#            initialDelaySeconds: 200
-#            periodSeconds: 10
-#            timeoutSeconds: 5
-#            successThreshold: 1
-#            failureThreshold: 3
-#          volumeMounts:
-#            - mountPath: /data/log
-#              name: business-log
-#      volumes:
-#        - name: business-log
-#          hostPath:
-#            path: /data/log
+            - containerPort: 6379
